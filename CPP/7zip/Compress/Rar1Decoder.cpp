@@ -29,7 +29,7 @@ public:
 };
 */
 
-CDecoder::CDecoder(): m_IsSolid(false), _errorMode(false) { }
+CDecoder::CDecoder(): _isSolid(false), _solidAllowed(false), _errorMode(false) { }
 
 void CDecoder::InitStructures()
 {
@@ -345,7 +345,7 @@ void CDecoder::GetFlagsBuf()
 
 void CDecoder::InitData()
 {
-  if (!m_IsSolid)
+  if (!_isSolid)
   {
     AvrPlcB = AvrLn1 = AvrLn2 = AvrLn3 = NumHuf = Buf60 = 0;
     AvrPlc = 0x3500;
@@ -391,6 +391,11 @@ HRESULT CDecoder::CodeReal(ISequentialInStream *inStream, ISequentialOutStream *
   if (inSize == NULL || outSize == NULL)
     return E_INVALIDARG;
 
+  if (_isSolid && !_solidAllowed)
+    return S_FALSE;
+
+  _solidAllowed = false;
+
   if (!m_OutWindowStream.Create(kHistorySize))
     return E_OUTOFMEMORY;
   if (!m_InBitStream.Create(1 << 20))
@@ -398,13 +403,13 @@ HRESULT CDecoder::CodeReal(ISequentialInStream *inStream, ISequentialOutStream *
 
   m_UnpackSize = (Int64)*outSize;
   m_OutWindowStream.SetStream(outStream);
-  m_OutWindowStream.Init(m_IsSolid);
+  m_OutWindowStream.Init(_isSolid);
   m_InBitStream.SetStream(inStream);
   m_InBitStream.Init();
 
   // CCoderReleaser coderReleaser(this);
   InitData();
-  if (!m_IsSolid)
+  if (!_isSolid)
   {
     _errorMode = false;
     InitStructures();
@@ -475,6 +480,7 @@ HRESULT CDecoder::CodeReal(ISequentialInStream *inStream, ISequentialOutStream *
   }
   if (m_UnpackSize < 0)
     return S_FALSE;
+  _solidAllowed = true;
   return m_OutWindowStream.Flush();
 }
 
@@ -491,7 +497,7 @@ STDMETHODIMP CDecoder::SetDecoderProperties2(const Byte *data, UInt32 size)
 {
   if (size < 1)
     return E_INVALIDARG;
-  m_IsSolid = ((data[0] & 1) != 0);
+  _isSolid = ((data[0] & 1) != 0);
   return S_OK;
 }
 

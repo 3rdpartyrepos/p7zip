@@ -191,7 +191,8 @@ class CDecoder:
   CRecordVector<CTempFilter *>  _tempFilters;
   UInt32 _lastFilter;
 
-  bool m_IsSolid;
+  bool _isSolid;
+  bool _solidAllowed;
   bool _errorMode;
 
   bool _lzMode;
