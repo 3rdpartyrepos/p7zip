@@ -92,7 +92,8 @@ CDecoder::CDecoder():
   _writtenFileSize(0),
   _vmData(0),
   _vmCode(0),
-  m_IsSolid(false)
+  m_IsSolid(false),
+  _errorMode(false)
 {
   Ppmd7_Construct(&_ppmd);
 }
@@ -545,6 +546,9 @@ HRESULT CDecoder::ReadTables(bool &keepDecompressing)
     return InitPPM();
   }
 
+  TablesRead = false;
+  TablesOK = false;
+
   _lzMode = true;
   PrevAlignBits = 0;
   PrevAlignCount = 0;
@@ -606,6 +610,9 @@ HRESULT CDecoder::ReadTables(bool &keepDecompressing)
       }
     }
   }
+  if (InputEofError())
+    return S_FALSE;
+
   TablesRead = true;
 
   // original code has check here:
@@ -623,6 +630,9 @@ HRESULT CDecoder::ReadTables(bool &keepDecompressing)
   RIF(m_LenDecoder.Build(&newLevels[kMainTableSize + kDistTableSize + kAlignTableSize]));
 
   memcpy(m_LastLevels, newLevels, kTablesSizesSum);
+
+  TablesOK = true;
+
   return S_OK;
 }
 
@@ -824,7 +834,12 @@ HRESULT CDecoder::CodeReal(ICompressProgressInfo *progress)
     PpmEscChar = 2;
     PpmError = true;
     InitFilters();
+    _errorMode = false;
   }
+
+  if (_errorMode)
+    return S_FALSE;
+
   if (!m_IsSolid || !TablesRead)
   {
     bool keepDecompressing;
@@ -838,6 +853,8 @@ HRESULT CDecoder::CodeReal(ICompressProgressInfo *progress)
     bool keepDecompressing;
     if (_lzMode)
     {
+      if (!TablesOK)
+        return S_FALSE;
       RINOK(DecodeLZ(keepDecompressing))
     }
     else
@@ -901,8 +918,8 @@ STDMETHODIMP CDecoder::Code(ISequentialInStream *inStream, ISequentialOutStream 
     _unpackSize = outSize ? *outSize : (UInt64)(Int64)-1;
     return CodeReal(progress);
   }
-  catch(const CInBufferException &e)  { return e.ErrorCode; }
-  catch(...) { return S_FALSE; }
+  catch(const CInBufferException &e)  { _errorMode = true; return e.ErrorCode; }
+  catch(...) { _errorMode = true; return S_FALSE; }
   // CNewException is possible here. But probably CNewException is caused
   // by error in data stream.
 }
