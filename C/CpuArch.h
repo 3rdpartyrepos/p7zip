@@ -66,6 +66,7 @@ MY_CPU_LE_UNALIGN means that CPU is LITTLE ENDIAN and CPU supports unaligned mem
     || defined(__MIPSEL__) \
     || defined(__MIPSEL) \
     || defined(_MIPSEL) \
+    || defined(__BFIN__) \
     || (defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__))
   #define MY_CPU_LE
 #endif

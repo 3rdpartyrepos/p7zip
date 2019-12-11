@@ -105,7 +105,7 @@ static const wchar_t *kUniversalWildcard = L"*";
 static const int kCommandIndex = 0;
 
 static const char *kHelpString =
-    "\nUsage: 7zSFX [<command>] [<switches>...]\n"
+    "\nUsage: 7zSFX [<command>] [<switches>...] [<file_name>...]\n"
     "\n"
     "<Commands>\n"
     // "  l: List contents of archive\n"
@@ -224,13 +224,6 @@ void AddCommandLineWildcardToCensor(NWildcard::CCensor &wildcardCensor,
     ShowMessageAndThrowException(kIncorrectWildcardInCommandLine, NExitCode::kUserError);
 }
 
-void AddToCensorFromNonSwitchesStrings(NWildcard::CCensor &wildcardCensor,
-    const UStringVector & /* nonSwitchStrings */, NRecursedType::EEnum type,
-    bool /* thereAreSwitchIncludeWildcards */)
-{
-  AddCommandLineWildcardToCensor(wildcardCensor, kUniversalWildcard, true, type);
-}
-
 
 #if 0 // #ifndef _WIN32
 static void GetArguments(int numArgs, const char *args[], UStringVector &parts)
@@ -290,7 +283,13 @@ int Main2(
   NCommandLineParser::CParser parser(kNumSwitches);
   try
   {
-    parser.ParseStrings(kSwitchForms, commandStrings);
+    if (!parser.ParseStrings(kSwitchForms, commandStrings))
+    {
+      g_StdOut << "Command line error:" << endl
+          << parser.ErrorMessage << endl
+          << parser.ErrorLine << endl;
+      return NExitCode::kUserError;
+    }
   }
   catch(...)
   {
@@ -304,17 +303,20 @@ int Main2(
   }
   const UStringVector &nonSwitchStrings = parser.NonSwitchStrings;
 
-  int numNonSwitchStrings = nonSwitchStrings.Size();
+  unsigned curCommandIndex = 0;
 
   CArchiveCommand command;
-  if (numNonSwitchStrings == 0)
+  if (nonSwitchStrings.IsEmpty())
     command.CommandType = NCommandType::kFullExtract;
   else
   {
-    if (numNonSwitchStrings > 1)
-      PrintHelpAndExit();
-    if (!ParseArchiveCommand(nonSwitchStrings[kCommandIndex], command))
-      PrintHelpAndExit();
+    const UString &cmd = nonSwitchStrings[curCommandIndex];
+    if (!ParseArchiveCommand(cmd, command))
+    {
+      g_StdOut << "ERROR: Unknown command:" << endl << cmd << endl;
+      return NExitCode::kUserError;
+    }
+    curCommandIndex = 1;
   }
 
 
@@ -323,11 +325,17 @@ int Main2(
 
   NWildcard::CCensor wildcardCensor;
   
-  bool thereAreSwitchIncludeWildcards;
-  thereAreSwitchIncludeWildcards = false;
-
-  AddToCensorFromNonSwitchesStrings(wildcardCensor, nonSwitchStrings, recursedType,
-      thereAreSwitchIncludeWildcards);
+  {
+    if (nonSwitchStrings.Size() == curCommandIndex)
+      AddCommandLineWildcardToCensor(wildcardCensor, kUniversalWildcard, true, recursedType);
+    for (; curCommandIndex < nonSwitchStrings.Size(); curCommandIndex++)
+    {
+      const UString &s = nonSwitchStrings[curCommandIndex];
+      if (s.IsEmpty())
+        throw "Empty file path";
+      AddCommandLineWildcardToCensor(wildcardCensor, s, true, recursedType);
+    }
+  }
 
   bool yesToAll = parser[NKey::kYes].ThereIs;
 
