@@ -22,7 +22,7 @@ linux_task:
     CIRRUS_CLONE_DEPTH: 1
   install_script:
     - apt update
-    - apt install -y gcc g++ yasm
+    - apt install -y build-essential gcc g++ yasm
   script:
     - cp makefile.linux_amd64_asm makefile.machine
     - make -j2
