@@ -1,0 +1,25 @@
+freebsd_12_task:
+  freebsd_instance:
+    image: freebsd-12-0-release-amd64
+    cpu: 2
+    memory: 3G
+  env:
+    CIRRUS_CLONE_DEPTH: 1
+  install_script: pkg install -y curl gcc git glib gmake gnutls pkgconf
+  script:
+    - cp makefile.freebsd6+ makefile.machine
+    - make -j2
+
+linux_task:
+  container:
+    image: openjdk:8-jdk
+    cpu: 2
+    memory: 3G
+  env:
+    CIRRUS_CLONE_DEPTH: 1
+  install_script:
+    - apt update
+    - apt install -y gcc g++ yasm
+  script:
+    - cp makefile.linux_amd64_asm makefile.machine
+    - make -j2
