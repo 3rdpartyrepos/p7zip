@@ -1,4 +1,5 @@
 freebsd_12_task:
+  only_if: $CIRRUS_BRANCH == '1604_to_1700'
   freebsd_instance:
     image: freebsd-12-0-release-amd64
     cpu: 2
@@ -7,10 +8,12 @@ freebsd_12_task:
     CIRRUS_CLONE_DEPTH: 1
   install_script: pkg install -y curl gcc git glib gmake gnutls pkgconf
   script:
+    - git checkout
     - cp makefile.freebsd6+ makefile.machine
     - make -j2
 
 linux_task:
+  only_if: $CIRRUS_BRANCH == '1604_to_1700'
   container:
     image: openjdk:8-jdk
     cpu: 2
