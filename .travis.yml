@@ -1,0 +1,14 @@
+language: cpp
+
+branches:
+  only:
+  - 1604_to_1700
+
+matrix:
+  include:
+    - os: osx
+      osx_image: xcode10.1
+
+script:
+- cp makefile.macosx_llvm_64bits makefile.machine
+- make -j2
