@@ -8,6 +8,8 @@
 #include <ctype.h>
 #endif
 
+#include "IntToString.h"
+
 #if !defined(_UNICODE) || !defined(USE_UNICODE_FSTRING)
 #include "StringConvert.h"
 #endif
@@ -27,6 +29,9 @@ inline const char* MyStringGetNextCharPointer(const char *p) throw()
   #endif
 }
 */
+
+#define MY_STRING_NEW_char(_size_) MY_STRING_NEW(char, _size_)
+#define MY_STRING_NEW_wchar_t(_size_) MY_STRING_NEW(wchar_t, _size_)
 
 int FindCharPosInString(const char *s, char c) throw()
 {
@@ -52,7 +57,18 @@ int FindCharPosInString(const wchar_t *s, wchar_t c) throw()
 }
 
 /*
-void MyStringUpper_Ascii(wchar_t *s)
+void MyStringUpper_Ascii(char *s) throw()
+{
+  for (;;)
+  {
+    char c = *s;
+    if (c == 0)
+      return;
+    *s++ = MyCharUpper_Ascii(c);
+  }
+}
+
+void MyStringUpper_Ascii(wchar_t *s) throw()
 {
   for (;;)
   {
@@ -282,6 +298,26 @@ bool IsString1PrefixedByString2(const wchar_t *s1, const wchar_t *s2) throw()
   }
 }
 
+bool IsString1PrefixedByString2(const wchar_t *s1, const char *s2) throw()
+{
+  for (;;)
+  {
+    unsigned char c2 = (unsigned char)(*s2++); if (c2 == 0) return true;
+    wchar_t c1 = *s1++; if (c1 != c2) return false;
+  }
+}
+
+bool IsString1PrefixedByString2_NoCase_Ascii(const wchar_t *s1, const char *s2) throw()
+{
+  for (;;)
+  {
+    char c2 = *s2++; if (c2 == 0) return true;
+    wchar_t c1 = *s1++;
+    if (c1 != (unsigned char)c2 && MyCharLower_Ascii(c1) != (unsigned char)MyCharLower_Ascii(c2))
+      return false;
+  }
+}
+
 bool IsString1PrefixedByString2_NoCase(const wchar_t *s1, const wchar_t *s2) throw()
 {
   for (;;)
@@ -345,8 +381,8 @@ void AString::ReAlloc(unsigned newLimit)
 {
   if (newLimit < _len || newLimit >= k_Alloc_Len_Limit) throw 20130220;
   // MY_STRING_REALLOC(_chars, char, newLimit + 1, _len + 1);
-  char *newBuf = MY_STRING_NEW(char, newLimit + 1);
-  memcpy(newBuf, _chars, (size_t)(_len + 1)); \
+  char *newBuf = MY_STRING_NEW_char(newLimit + 1);
+  memcpy(newBuf, _chars, (size_t)(_len + 1));
   MY_STRING_DELETE(_chars);
   _chars = newBuf;
   _limit = newLimit;
@@ -356,7 +392,7 @@ void AString::ReAlloc2(unsigned newLimit)
 {
   if (newLimit >= k_Alloc_Len_Limit) throw 20130220;
   // MY_STRING_REALLOC(_chars, char, newLimit + 1, 0);
-  char *newBuf = MY_STRING_NEW(char, newLimit + 1);
+  char *newBuf = MY_STRING_NEW_char(newLimit + 1);
   newBuf[0] = 0;
   MY_STRING_DELETE(_chars);
   _chars = newBuf;
@@ -366,7 +402,7 @@ void AString::ReAlloc2(unsigned newLimit)
 void AString::SetStartLen(unsigned len)
 {
   _chars = 0;
-  _chars = MY_STRING_NEW(char, len + 1);
+  _chars = MY_STRING_NEW_char(len + 1);
   _len = len;
   _limit = len;
 }
@@ -393,7 +429,6 @@ void AString::Grow(unsigned n)
   ReAlloc(next - 1);
 }
 
-/*
 AString::AString(unsigned num, const char *s)
 {
   unsigned len = MyStringLen(s);
@@ -403,7 +438,6 @@ AString::AString(unsigned num, const char *s)
   memcpy(_chars, s, num);
   _chars[num] = 0;
 }
-*/
 
 AString::AString(unsigned num, const AString &s)
 {

@@ -270,7 +270,7 @@ class AString
   void Grow_1();
   void Grow(unsigned n);
 
-  // AString(unsigned num, const char *s); //@@@@@ TODO to be decommented after adding implementation
+  AString(unsigned num, const char *s);
   AString(unsigned num, const AString &s);
   AString(const AString &s, char c); // it's for String + char
   AString(const char *s1, unsigned num1, const char *s2, unsigned num2);
