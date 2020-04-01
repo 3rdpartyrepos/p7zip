@@ -22,6 +22,27 @@ wchar_t * wcsstr(const wchar_t *wcs1, const wchar_t *wcs2);
 #include "MyTypes.h"
 #include "MyVector.h"
 
+
+// @@@@@ useless on p7zip, assume wchar_t always native type
+#ifdef _MSC_VER
+  #ifdef _NATIVE_WCHAR_T_DEFINED
+    #define MY_NATIVE_WCHAR_T_DEFINED
+  #endif
+#else
+    #define MY_NATIVE_WCHAR_T_DEFINED
+#endif
+
+/*
+  native support for wchar_t:
+ _MSC_VER == 1600 : /Zc:wchar_t is not supported
+ _MSC_VER == 1310 (VS2003)
+ ? _MSC_VER == 1400 (VS2005) : wchar_t <- unsigned short
+              /Zc:wchar_t  : wchar_t <- __wchar_t, _WCHAR_T_DEFINED and _NATIVE_WCHAR_T_DEFINED
+ _MSC_VER > 1400 (VS2008+)
+              /Zc:wchar_t[-]
+              /Zc:wchar_t is on by default
+*/
+
 #ifdef _WIN32
 #define IS_PATH_SEPAR(c) ((c) == '\\' || (c) == '/')
 #else
@@ -68,6 +89,12 @@ inline void MyStringCopy(wchar_t *dest, const wchar_t *src)
   while ((*dest++ = *src++) != 0);
 }
 
+inline void MyStringCat(wchar_t *dest, const wchar_t *src)
+{
+  MyStringCopy(dest + MyStringLen(dest), src);
+}
+
+
 /*
 inline wchar_t *MyWcpCpy(wchar_t *dest, const wchar_t *src)
 {
@@ -96,13 +123,15 @@ int FindCharPosInString(const wchar_t *s, wchar_t c) throw();
   #define STRING_UNICODE_THROW throw()
 #endif
 
-/*
+
 inline char MyCharUpper_Ascii(char c)
 {
   if (c >= 'a' && c <= 'z')
-    return (char)(c - 0x20);
+    return (char)((unsigned char)c - 0x20);
   return c;
 }
+
+/*
 inline wchar_t MyCharUpper_Ascii(wchar_t c)
 {
   if (c >= 'a' && c <= 'z')
@@ -166,6 +195,7 @@ inline wchar_t MyCharLower(wchar_t c) throw()
 // char *MyStringUpper(char *s) throw();
 // char *MyStringLower(char *s) throw();
 
+// void MyStringUpper_Ascii(char *s) throw();
 // void MyStringUpper_Ascii(wchar_t *s) throw();
 void MyStringLower_Ascii(char *s) throw();
 void MyStringLower_Ascii(wchar_t *s) throw();
@@ -176,8 +206,11 @@ bool StringsAreEqualNoCase(const wchar_t *s1, const wchar_t *s2) throw();
 
 bool IsString1PrefixedByString2(const char *s1, const char *s2) throw();
 bool IsString1PrefixedByString2(const wchar_t *s1, const wchar_t *s2) throw();
+bool IsString1PrefixedByString2(const wchar_t *s1, const char *s2) throw();
+bool IsString1PrefixedByString2_NoCase_Ascii(const wchar_t *u, const char *a) throw();
 bool IsString1PrefixedByString2_NoCase(const wchar_t *s1, const wchar_t *s2) throw();
 
+#define MyStringCompare(s1, s2) wcscmp(s1, s2)
 int MyStringCompareNoCase(const wchar_t *s1, const wchar_t *s2) throw();
 // int MyStringCompareNoCase_N(const wchar_t *s1, const wchar_t *s2, unsigned num) throw();
 
@@ -190,6 +223,33 @@ bool StringsAreEqualNoCase_Ascii(const wchar_t *s1, const wchar_t *s2) throw();
 
 #define MY_STRING_DELETE(_p_) delete []_p_;
 // #define MY_STRING_DELETE(_p_) my_delete(_p_);
+
+
+#define FORBID_STRING_OPS_2(cls, t) \
+  void Find(t) const; \
+  void Find(t, unsigned startIndex) const; \
+  void ReverseFind(t) const; \
+  void InsertAtFront(t); \
+  void RemoveChar(t); \
+  void Replace(t, t); \
+
+#define FORBID_STRING_OPS(cls, t) \
+  explicit cls(t); \
+  explicit cls(const t *); \
+  cls &operator=(t); \
+  cls &operator=(const t *); \
+  cls &operator+=(t); \
+  cls &operator+=(const t *); \
+  FORBID_STRING_OPS_2(cls, t); \
+
+/*
+  cls &operator+(t); \
+  cls &operator+(const t *); \
+*/
+
+#define FORBID_STRING_OPS_AString(t) FORBID_STRING_OPS(AString, t)
+#define FORBID_STRING_OPS_UString(t) FORBID_STRING_OPS(UString, t)
+#define FORBID_STRING_OPS_UString2(t) FORBID_STRING_OPS(UString2, t)
 
 class AString
 {
@@ -210,7 +270,7 @@ class AString
   void Grow_1();
   void Grow(unsigned n);
 
-  // AString(unsigned num, const char *s);
+  // AString(unsigned num, const char *s); //@@@@@ TODO to be decommented after adding implementation
   AString(unsigned num, const AString &s);
   AString(const AString &s, char c); // it's for String + char
   AString(const char *s1, unsigned num1, const char *s2, unsigned num2);
@@ -223,6 +283,7 @@ class AString
   friend AString operator+(const char    *s1, const AString &s2);
 
   // ---------- forbidden functions ----------
+//@@@@@ BEGIN REMOVE BLOCK
   AString &operator+=(wchar_t c);
   AString &operator=(wchar_t c);
   AString(wchar_t c);
@@ -232,11 +293,27 @@ class AString
   void InsertAtFront(wchar_t c);
   void RemoveChar(wchar_t ch);
   void Replace(wchar_t oldChar, wchar_t newChar);
+//@@@@@ END REMOVE BLOCK
+
+/*//@@@@@ BEGIN DECOMMENT BLOCK
+  #ifdef MY_NATIVE_WCHAR_T_DEFINED
+  FORBID_STRING_OPS_AString(wchar_t)
+  #endif
+
+  FORBID_STRING_OPS_AString(signed char)
+  FORBID_STRING_OPS_AString(unsigned char)
+  FORBID_STRING_OPS_AString(short)
+  FORBID_STRING_OPS_AString(unsigned short)
+  FORBID_STRING_OPS_AString(int)
+  FORBID_STRING_OPS_AString(unsigned)
+  FORBID_STRING_OPS_AString(long)
+  FORBID_STRING_OPS_AString(unsigned long)
+  //@@@@@ END DECOMMENT BLOCK */
 
 public:
-  AString();
-  AString(char c);
-  AString(const char *s);
+  explicit AString();
+  explicit AString(char c);
+  AString(const char *s); //@@@@@ TODO to be marked explicite
   AString(const AString &s);
   ~AString() { MY_STRING_DELETE(_chars); }
 
@@ -248,7 +325,7 @@ public:
   const char *Ptr() const { return _chars; }
   const char *Ptr(unsigned pos) const { return _chars + pos; }
   const char *RightPtr(unsigned num) const { return _chars + _len - num; }
-  char Back() const { return _chars[_len - 1]; }
+  char Back() const { return _chars[(size_t)_len - 1]; }
 
   void ReplaceOneCharAtPos(unsigned pos, char c) { _chars[pos] = c; }
 
@@ -300,16 +377,18 @@ public:
   
   void Add_Space();
   void Add_Space_if_NotEmpty();
+  void Add_OptSpaced(const char *s);
   void Add_LF();
   void Add_PathSepar() { operator+=(CHAR_PATH_SEPARATOR); }
 
   AString &operator+=(const char *s);
   AString &operator+=(const AString &s);
-  void AddAscii(const char *s) { operator+=(s); }
+  void AddAscii(const char *s) { operator+=(s); } // @@@@@ TO BE REMOVED, after replacing usage in dependent files
+
+  void Add_UInt32(UInt32 v);
 
   void SetFrom(const char *s, unsigned len); // no check
   void SetFrom_CalcLen(const char *s, unsigned len);
-  // void SetFromAscii(const char *s) { operator+=(s); }
 
   AString Mid(unsigned startIndex, unsigned count) const { return AString(count, _chars + startIndex); }
   AString Left(unsigned count) const { return AString(count, *this); }
@@ -451,8 +530,9 @@ class UString
   friend UString operator+(const wchar_t *s1, const UString &s2);
 
   // ---------- forbidden functions ----------
-  
-  UString &operator+=(char c);
+
+//@@@@@ BEGIN REMOVE BLOCK
+  // UString &operator+=(char c);
   UString &operator+=(unsigned char c);
   UString &operator=(char c);
   UString &operator=(unsigned char c);
@@ -470,10 +550,31 @@ class UString
   void RemoveChar(unsigned char ch);
   void Replace(char oldChar, char newChar);
   void Replace(unsigned char oldChar, unsigned char newChar);
+//@@@@@ END REMOVE BLOCK
+  
+/*//@@@@@ BEGIN DECOMMENT BLOCK
+  FORBID_STRING_OPS_UString(signed char)
+  FORBID_STRING_OPS_UString(unsigned char)
+  FORBID_STRING_OPS_UString(short)
+  
+  #ifdef MY_NATIVE_WCHAR_T_DEFINED
+  FORBID_STRING_OPS_UString(unsigned short)
+  #endif
+
+  FORBID_STRING_OPS_UString(int)
+  FORBID_STRING_OPS_UString(unsigned)
+  FORBID_STRING_OPS_UString(long)
+  FORBID_STRING_OPS_UString(unsigned long)
+
+  FORBID_STRING_OPS_2(UString, char)
+  //@@@@@ END DECOMMENT BLOCK */
 
 public:
   UString();
-  UString(wchar_t c);
+  UString(wchar_t c); //@@@@@ TODO mark explicit
+  // explicit UString(char c); //@@@@@ TODO decomment
+  explicit UString(const char *s);
+  // UString(const AString &s);
   UString(const wchar_t *s);
   UString(const UString &s);
   ~UString() { MY_STRING_DELETE(_chars); }
@@ -486,7 +587,7 @@ public:
   const wchar_t *Ptr() const { return _chars; }
   const wchar_t *Ptr(unsigned pos) const { return _chars + pos; }
   const wchar_t *RightPtr(unsigned num) const { return _chars + _len - num; }
-  wchar_t Back() const { return _chars[_len - 1]; }
+  wchar_t Back() const { return _chars[(size_t)_len - 1]; }
 
   void ReplaceOneCharAtPos(unsigned pos, wchar_t c) { _chars[pos] = c; }
 
@@ -516,9 +617,13 @@ public:
   }
 
   UString &operator=(wchar_t c);
+  // UString &operator=(char c) { return (*this)=((wchar_t)c); } //@@@@@ TODO enable
   UString &operator=(const wchar_t *s);
   UString &operator=(const UString &s);
+  void SetFrom(const wchar_t *s, unsigned len); // no check
   void SetFromBstr(BSTR s);
+  UString &operator=(const char *s);
+  UString &operator=(const AString &s) { return operator=(s.Ptr()); }
 
   UString &operator+=(wchar_t c)
   {
@@ -532,6 +637,8 @@ public:
     return *this;
   }
 
+  UString &operator+=(char c) { return (*this)+=((wchar_t)(unsigned char)c); }
+
   void Add_Space();
   void Add_Space_if_NotEmpty();
   void Add_LF();
@@ -539,11 +646,17 @@ public:
 
   UString &operator+=(const wchar_t *s);
   UString &operator+=(const UString &s);
+  UString &operator+=(const char *s);
+  UString &operator+=(const AString &s) { return operator+=(s.Ptr()); }
 
-  void SetFrom(const wchar_t *s, unsigned len); // no check
+  // @@@@@ BEGIN TO BE REMOVED after updating usages in dependent files
+  // void SetFrom(const wchar_t *s, unsigned len); // no check
 
   void SetFromAscii(const char *s);
   void AddAscii(const char *s);
+  // @@@@@ END TO BE REMOVED
+  
+  void Add_UInt32(UInt32 v);
 
   UString Mid(unsigned startIndex, unsigned count) const { return UString(count, _chars + startIndex); }
   UString Left(unsigned count) const { return UString(count, *this); }
@@ -638,6 +751,12 @@ void operator==(const UString &s1, wchar_t c2);
 
 void operator+(wchar_t c, const UString &s); // this function can be OK, but we don't use it
 
+void operator+(const AString &s1, const UString &s2);
+void operator+(const UString &s1, const AString &s2);
+
+void operator+(const UString &s1, const char *s2);
+void operator+(const char *s1, const UString &s2);
+
 void operator+(const UString &s, char c);
 void operator+(const UString &s, unsigned char c);
 void operator+(char c, const UString &s);
@@ -669,16 +788,27 @@ class UString2
   void SetStartLen(unsigned len);
 
   // ---------- forbidden functions ----------
-  
+
+//@@@@@ BEGIN REMOVE BLOCK
   UString2 &operator=(char c);
   UString2 &operator=(unsigned char c);
   UString2 &operator=(wchar_t c);
   UString2(char c);
   UString2(unsigned char c);
+//@@@@@ END REMOVE BLOCK
+
+/*//@@@@@ BEGIN DECOMMENT BLOCK
+  FORBID_STRING_OPS_UString2(char)
+  FORBID_STRING_OPS_UString2(signed char)
+  FORBID_STRING_OPS_UString2(unsigned char)
+  FORBID_STRING_OPS_UString2(short)
+
+  UString2 &operator=(wchar_t c);
+  UString2(wchar_t c);
+  //@@@@@ END DECOMMENT BLOCK */
 
 public:
   UString2(): _chars(NULL), _len(0) {}
-  // UString2(wchar_t c);
   UString2(const wchar_t *s);
   UString2(const UString2 &s);
   ~UString2() { if (_chars) MY_STRING_DELETE(_chars); }
@@ -689,6 +819,8 @@ public:
 
   // operator const wchar_t *() const { return _chars; }
   const wchar_t *GetRawPtr() const { return _chars; }
+
+  int Compare(const wchar_t *s) const { return wcscmp(_chars, s); }
 
   wchar_t *GetBuf(unsigned minLen)
   {
@@ -762,6 +894,7 @@ typedef CObjectVector<CSysString> CSysStringVector;
 
   #define fs2us(_x_) (_x_)
   #define us2fs(_x_) (_x_)
+  FString fas2fs(const char *s);
   FString fas2fs(const AString &s);
   AString fs2fas(const FChar *s);
 
@@ -772,6 +905,7 @@ typedef CObjectVector<CSysString> CSysStringVector;
   typedef char FChar;
   typedef AString FString;
 
+  UString fs2us(const FChar *s);
   UString fs2us(const FString &s);
   FString us2fs(const wchar_t *s);
   #define fas2fs(_x_) (_x_)
@@ -783,8 +917,10 @@ typedef CObjectVector<CSysString> CSysStringVector;
 
 #define FCHAR_PATH_SEPARATOR FTEXT(CHAR_PATH_SEPARATOR)
 #define FSTRING_PATH_SEPARATOR FTEXT(STRING_PATH_SEPARATOR)
+// @@@@@ BEGIN TO BE COMMENTED
 #define FCHAR_ANY_MASK FTEXT('*')
 #define FSTRING_ANY_MASK FTEXT("*")
+// @@@@@ END BEGIN TO BE COMMENTED
 typedef const FChar *CFSTR;
 
 typedef CObjectVector<FString> FStringVector;
