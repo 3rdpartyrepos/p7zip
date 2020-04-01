@@ -9,8 +9,8 @@ freebsd_12_task:
   install_script: pkg install -y curl gcc git glib gmake gnutls pkgconf
   script:
     - git checkout
-    - cp makefile.freebsd6+ makefile.machine
-    - make -j2
+    - cp makefile.freebsd12 makefile.machine
+    - make -j2 all3
 
 linux_task:
   only_if: $CIRRUS_BRANCH == '1604_to_1700'
@@ -25,4 +25,4 @@ linux_task:
     - apt install -y build-essential gcc g++ yasm
   script:
     - cp makefile.linux_amd64_asm makefile.machine
-    - make -j2
+    - make -j2 all3
