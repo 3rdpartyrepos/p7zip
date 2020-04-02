@@ -1090,14 +1090,15 @@ UString &UString::operator=(wchar_t c)
 {
   if (1 > _limit)
   {
-    wchar_t *newBuf = MY_STRING_NEW(wchar_t, 1 + 1);
+    wchar_t *newBuf = MY_STRING_NEW_wchar_t(1 + 1);
     MY_STRING_DELETE(_chars);
     _chars = newBuf;
     _limit = 1;
   }
   _len = 1;
-  _chars[0] = c;
-  _chars[1] = 0;
+  wchar_t *chars = _chars;
+  chars[0] = c;
+  chars[1] = 0;
   return *this;
 }
 
@@ -1106,7 +1107,7 @@ UString &UString::operator=(const wchar_t *s)
   unsigned len = MyStringLen(s);
   if (len > _limit)
   {
-    wchar_t *newBuf = MY_STRING_NEW(wchar_t, len + 1);
+    wchar_t *newBuf = MY_STRING_NEW_wchar_t(len + 1);
     MY_STRING_DELETE(_chars);
     _chars = newBuf;
     _limit = len;
@@ -1123,7 +1124,7 @@ UString &UString::operator=(const UString &s)
   unsigned len = s._len;
   if (len > _limit)
   {
-    wchar_t *newBuf = MY_STRING_NEW(wchar_t, len + 1);
+    wchar_t *newBuf = MY_STRING_NEW_wchar_t(len + 1);
     MY_STRING_DELETE(_chars);
     _chars = newBuf;
     _limit = len;
@@ -1133,12 +1134,27 @@ UString &UString::operator=(const UString &s)
   return *this;
 }
 
+void UString::SetFrom(const wchar_t *s, unsigned len) // no check
+{
+  if (len > _limit)
+  {
+    wchar_t *newBuf = MY_STRING_NEW_wchar_t(len + 1);
+    MY_STRING_DELETE(_chars);
+    _chars = newBuf;
+    _limit = len;
+  }
+  if (len != 0)
+    wmemcpy(_chars, s, len);
+  _chars[len] = 0;
+  _len = len;
+}
+
 void UString::SetFromBstr(BSTR s)
 {
   unsigned len = ::SysStringLen(s);
   if (len > _limit)
   {
-    wchar_t *newBuf = MY_STRING_NEW(wchar_t, len + 1);
+    wchar_t *newBuf = MY_STRING_NEW_wchar_t(len + 1);
     MY_STRING_DELETE(_chars);
     _chars = newBuf;
     _limit = len;
@@ -1146,6 +1162,24 @@ void UString::SetFromBstr(BSTR s)
   _len = len;
   // if (s)
     wmemcpy(_chars, s, len + 1);
+}
+
+UString &UString::operator=(const char *s)
+{
+  unsigned len = MyStringLen(s);
+  if (len > _limit)
+  {
+    wchar_t *newBuf = MY_STRING_NEW_wchar_t(len + 1);
+    MY_STRING_DELETE(_chars);
+    _chars = newBuf;
+    _limit = len;
+  }
+  wchar_t *chars = _chars;
+  for (unsigned i = 0; i < len; i++)
+    chars[i] = (unsigned char)s[i];
+  chars[len] = 0;
+  _len = len;
+  return *this;
 }
 
 void UString::Add_Space() { operator+=(L' '); }
@@ -1179,21 +1213,7 @@ UString &UString::operator+=(const UString &s)
   return *this;
 }
 
-void UString::SetFrom(const wchar_t *s, unsigned len) // no check
-{
-  if (len > _limit)
-  {
-    wchar_t *newBuf = MY_STRING_NEW(wchar_t, len + 1);
-    MY_STRING_DELETE(_chars);
-    _chars = newBuf;
-    _limit = len;
-  }
-  if (len != 0)
-    wmemcpy(_chars, s, len);
-  _chars[len] = 0;
-  _len = len;
-}
-
+//@@@@@ BEGIN REMOVE BLOCK ONCE USAGES IN DEPENDENT FILES ARE REMOVED AS WELL
 void UString::SetFromAscii(const char *s)
 {
   unsigned len = MyStringLen(s);
@@ -1221,8 +1241,26 @@ void UString::AddAscii(const char *s)
   chars[len] = 0;
   _len += len;
 }
+//@@@@@ END REMOVE BLOCK ONCE USAGES IN DEPENDENT FILES ARE REMOVED AS WELL
 
+UString &UString::operator+=(const char *s)
+{
+  unsigned len = MyStringLen(s);
+  Grow(len);
+  wchar_t *chars = _chars + _len;
+  for (unsigned i = 0; i < len; i++)
+    chars[i] = (unsigned char)s[i];
+  chars[len] = 0;
+  _len += len;
+  return *this;
+}
 
+void UString::Add_UInt32(UInt32 v)
+{
+  char sz[16];
+  ConvertUInt32ToString(v, sz);
+  (*this) += sz;
+}
 
 int UString::Find(const wchar_t *s, unsigned startIndex) const throw()
 {
@@ -1309,7 +1347,7 @@ void UString::TrimRight() throw()
   unsigned i;
   for (i = _len; i != 0; i--)
   {
-    wchar_t c = p[i - 1];
+    wchar_t c = p[(size_t)i - 1];
     if (c != ' ' && c != '\n' && c != '\t')
       break;
   }
@@ -1395,12 +1433,13 @@ void UString::Replace(wchar_t oldChar, wchar_t newChar) throw()
     return; // 0;
   // unsigned number = 0;
   int pos = 0;
+  wchar_t *chars = _chars;
   while ((unsigned)pos < _len)
   {
     pos = Find(oldChar, pos);
     if (pos < 0)
       break;
-    _chars[(unsigned)pos] = newChar;
+    chars[(unsigned)pos] = newChar;
     pos++;
     // number++;
   }
@@ -1463,13 +1502,13 @@ void UString2::ReAlloc2(unsigned newLimit)
 {
   if (newLimit >= k_Alloc_Len_Limit) throw 20130221;
   // MY_STRING_REALLOC(_chars, wchar_t, newLimit + 1, 0);
-  _chars = MY_STRING_NEW(wchar_t, newLimit + 1);
+  _chars = MY_STRING_NEW_wchar_t(newLimit + 1);
 }
 
 void UString2::SetStartLen(unsigned len)
 {
   _chars = 0;
-  _chars = MY_STRING_NEW(wchar_t, len + 1);
+  _chars = MY_STRING_NEW_wchar_t(len + 1);
   _len = len;
 }
 
@@ -1478,8 +1517,9 @@ void UString2::SetStartLen(unsigned len)
 UString2::UString2(wchar_t c)
 {
   SetStartLen(1);
-  _chars[0] = c;
-  _chars[1] = 0;
+  wchar_t *chars = _chars;
+  chars[0] = c;
+  chars[1] = 0;
 }
 */
 
@@ -1504,14 +1544,15 @@ UString2 &UString2::operator=(wchar_t c)
 {
   if (1 > _len)
   {
-    wchar_t *newBuf = MY_STRING_NEW(wchar_t, 1 + 1);
+    wchar_t *newBuf = MY_STRING_NEW_wchar_t(1 + 1);
     if (_chars)
       MY_STRING_DELETE(_chars);
     _chars = newBuf;
   }
   _len = 1;
-  _chars[0] = c;
-  _chars[1] = 0;
+  wchar_t *chars = _chars;
+  chars[0] = c;
+  chars[1] = 0;
   return *this;
 }
 */
@@ -1521,7 +1562,7 @@ UString2 &UString2::operator=(const wchar_t *s)
   unsigned len = MyStringLen(s);
   if (len > _len)
   {
-    wchar_t *newBuf = MY_STRING_NEW(wchar_t, len + 1);
+    wchar_t *newBuf = MY_STRING_NEW_wchar_t(len + 1);
     if (_chars)
       MY_STRING_DELETE(_chars);
     _chars = newBuf;
@@ -1536,7 +1577,7 @@ void UString2::SetFromAscii(const char *s)
   unsigned len = MyStringLen(s);
   if (len > _len)
   {
-    wchar_t *newBuf = MY_STRING_NEW(wchar_t, len + 1);
+    wchar_t *newBuf = MY_STRING_NEW_wchar_t(len + 1);
     if (_chars)
       MY_STRING_DELETE(_chars);
     _chars = newBuf;
@@ -1555,7 +1596,7 @@ UString2 &UString2::operator=(const UString2 &s)
   unsigned len = s._len;
   if (len > _len)
   {
-    wchar_t *newBuf = MY_STRING_NEW(wchar_t, len + 1);
+    wchar_t *newBuf = MY_STRING_NEW_wchar_t(len + 1);
     if (_chars)
       MY_STRING_DELETE(_chars);
     _chars = newBuf;
@@ -1613,6 +1654,11 @@ AString fs2fas(CFSTR s)
   return UnicodeStringToMultiByte(s, GetCurrentCodePage());
 }
 
+FString fas2fs(const char *s)
+{
+  return MultiByteToUnicodeString(s, GetCurrentCodePage());
+}
+
 FString fas2fs(const AString &s)
 {
   return MultiByteToUnicodeString(s, GetCurrentCodePage());
@@ -1622,9 +1668,14 @@ FString fas2fs(const AString &s)
 
 #else
 
+UString fs2us(const FChar *s)
+{
+  return MultiByteToUnicodeString(s, GetCurrentCodePage());
+}
+
 UString fs2us(const FString &s)
 {
-  return MultiByteToUnicodeString((AString)s, GetCurrentCodePage());
+  return MultiByteToUnicodeString(s, GetCurrentCodePage());
 }
 
 FString us2fs(const wchar_t *s)
