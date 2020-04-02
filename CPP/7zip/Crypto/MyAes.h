@@ -29,6 +29,8 @@ class CAesCbcCoder:
 
 public:
   CAesCbcCoder(bool encodeMode, unsigned keySize);
+
+  virtual ~CAesCbcCoder() {};   // we need virtual destructor for derived classes
   
   MY_UNKNOWN_IMP3(ICompressFilter, ICryptoProperties, ICompressSetCoderProperties)
   
