@@ -466,6 +466,12 @@ bool DoesFileOrDirExist(CFSTR name)
   return fi.Find(name);
 }
 
+void CEnumerator::SetDirPrefix(const FString &dirPrefix)
+{
+  _wildcard = dirPrefix;
+  _wildcard += '*';
+}
+
 bool CEnumerator::NextAny(CFileInfo &fi)
 {
   if (_findFile.IsHandleAllocated())

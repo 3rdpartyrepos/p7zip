@@ -101,7 +101,8 @@ class CEnumerator
 
   bool NextAny(CFileInfo &fileInfo);
 public:
-  CEnumerator(const FString &wildcard): _wildcard(wildcard) {}
+  CEnumerator(const FString &wildcard): _wildcard(wildcard) {} //@@@@@ TODO TO BE REMOVED ONCE USAGES IN DEPENDENT FILES ARE REMOVED
+  void SetDirPrefix(const FString &dirPrefix);
   bool Next(CFileInfo &fileInfo);
   bool Next(CFileInfo &fileInfo, bool &found);
 };
