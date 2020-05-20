@@ -1,7 +1,7 @@
 freebsd_12_task:
   only_if: $CIRRUS_BRANCH == '1604_to_1700'
   freebsd_instance:
-    image: freebsd-12-0-release-amd64
+    image: freebsd-12-1-release-amd64
     cpu: 2
     memory: 3G
   env:
