@@ -112,14 +112,27 @@ typedef int Bool;
 #define MY_NO_INLINE
 #endif
 
+#define MY_FORCE_INLINE __forceinline
+
 #define MY_CDECL __cdecl
 #define MY_FAST_CALL __fastcall
 
 #else
 
 #define MY_NO_INLINE
+#define MY_FORCE_INLINE
 #define MY_CDECL
 #define MY_FAST_CALL
+
+/* inline keyword : for C++ / C99 */
+
+/* GCC, clang: */
+/*
+#if defined (__GNUC__) && (__GNUC__ >= 4)
+#define MY_FORCE_INLINE __attribute__((always_inline))
+#define MY_NO_INLINE __attribute__((noinline))
+#endif
+*/
 
 #endif
 
