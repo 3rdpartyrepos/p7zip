@@ -2296,6 +2296,12 @@ SRes LzmaEnc_WriteProperties(CLzmaEncHandle pp, Byte *props, SizeT *size)
 }
 
 
+unsigned LzmaEnc_IsWriteEndMark(CLzmaEncHandle pp)
+{
+  return ((CLzmaEnc *)pp)->writeEndMark;
+}
+
+
 SRes LzmaEnc_MemEncode(CLzmaEncHandle pp, Byte *dest, SizeT *destLen, const Byte *src, SizeT srcLen,
     int writeEndMark, ICompressProgress *progress, ISzAlloc *alloc, ISzAlloc *allocBig)
 {

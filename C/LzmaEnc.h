@@ -53,6 +53,7 @@ CLzmaEncHandle LzmaEnc_Create(ISzAlloc *alloc);
 void LzmaEnc_Destroy(CLzmaEncHandle p, ISzAlloc *alloc, ISzAlloc *allocBig);
 SRes LzmaEnc_SetProps(CLzmaEncHandle p, const CLzmaEncProps *props);
 SRes LzmaEnc_WriteProperties(CLzmaEncHandle p, Byte *properties, SizeT *size);
+unsigned LzmaEnc_IsWriteEndMark(CLzmaEncHandle p);
 SRes LzmaEnc_Encode(CLzmaEncHandle p, ISeqOutStream *outStream, ISeqInStream *inStream,
     ICompressProgress *progress, ISzAlloc *alloc, ISzAlloc *allocBig);
 SRes LzmaEnc_MemEncode(CLzmaEncHandle p, Byte *dest, SizeT *destLen, const Byte *src, SizeT srcLen,
