@@ -536,7 +536,7 @@ class UString
   UString &operator+=(unsigned char c);
   // UString &operator=(char c); //@@@@@ REMOVED EARLY DUE TO USAGE IN ArchiveExtractCallback.cpp
   UString &operator=(unsigned char c);
-  UString(char c);
+  // UString(char c); //@@@@@ REMOVED EARLY DUE TO USAGE IN ExtractingFilePath.cpp
   UString(unsigned char c);
   void Find(char c) const;
   void Find(unsigned char c) const;
@@ -572,7 +572,7 @@ class UString
 public:
   UString();
   UString(wchar_t c); //@@@@@ TODO mark explicit
-  // explicit UString(char c); //@@@@@ TODO decomment
+  explicit UString(char c);
   explicit UString(const char *s);
   // UString(const AString &s);
   UString(const wchar_t *s);

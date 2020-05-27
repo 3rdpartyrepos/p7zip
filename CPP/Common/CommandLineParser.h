@@ -43,19 +43,31 @@ struct CSwitchResult
   
 class CParser
 {
+//@@@@@ BEGIN REMOVE BLOCK
   unsigned _numSwitches;
+//@@@@@ END REMOVE BLOCK
   CSwitchResult *_switches;
 
+//@@@@@ BEGIN REMOVE BLOCK
   bool ParseString(const UString &s, const CSwitchForm *switchForms);
+//@@@@@ END REMOVE BLOCK
+  bool ParseString(const UString &s, const CSwitchForm *switchForms, unsigned numSwitches);
 public:
   UStringVector NonSwitchStrings;
+  int StopSwitchIndex;  // NonSwitchStrings[StopSwitchIndex+] are after "--"
   AString ErrorMessage;
   UString ErrorLine;
   
+//@@@@@ BEGIN REMOVE BLOCK
   CParser(unsigned numSwitches);
+//@@@@@ END REMOVE BLOCK
+  CParser();
   ~CParser();
+//@@@@@ BEGIN REMOVE BLOCK
   bool ParseStrings(const CSwitchForm *switchForms, const UStringVector &commandStrings);
-  const CSwitchResult& operator[](size_t index) const { return _switches[index]; }
+//@@@@@ END REMOVE BLOCK
+  bool ParseStrings(const CSwitchForm *switchForms, unsigned numSwitches, const UStringVector &commandStrings);
+  const CSwitchResult& operator[](unsigned index) const { return _switches[index]; }
 };
 
 }

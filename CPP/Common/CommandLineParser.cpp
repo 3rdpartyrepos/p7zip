@@ -4,6 +4,7 @@
 
 #include "CommandLineParser.h"
 
+//@@@@@ BEGIN REMOVE BLOCK
 static bool IsString1PrefixedByString2_NoCase(const wchar_t *u, const char *a)
 {
   for (;;)
@@ -17,6 +18,7 @@ static bool IsString1PrefixedByString2_NoCase(const wchar_t *u, const char *a)
     u++;
   }
 }
+//@@@@@ END REMOVE BLOCK
 
 namespace NCommandLineParser {
 
@@ -45,7 +47,7 @@ bool SplitCommandLine(const UString &src, UString &dest1, UString &dest2)
 
 void SplitCommandLine(const UString &s, UStringVector &parts)
 {
-  UString sTemp = s;
+  UString sTemp (s);
   sTemp.Trim();
   parts.Clear();
   for (;;)
@@ -60,18 +62,26 @@ void SplitCommandLine(const UString &s, UStringVector &parts)
 }
 #endif
 
-static const char *kStopSwitchParsing = "--";
+static const char * const kStopSwitchParsing = "--";
 
 static bool inline IsItSwitchChar(wchar_t c)
 {
   return (c == '-');
 }
 
+//@@@@@ BEGIN REMOVE BLOCK
 CParser::CParser(unsigned numSwitches):
   _numSwitches(numSwitches),
   _switches(0)
 {
   _switches = new CSwitchResult[numSwitches];
+}
+//@@@@@ END REMOVE BLOCK
+
+CParser::CParser():
+  _switches(NULL),
+  StopSwitchIndex(-1)
+{
 }
 
 CParser::~CParser()
@@ -80,8 +90,7 @@ CParser::~CParser()
 }
 
 
-// if (s) contains switch then function updates switch structures
-// out: true, if (s) is a switch
+//@@@@@ BEGIN REMOVE BLOCK
 bool CParser::ParseString(const UString &s, const CSwitchForm *switchForms)
 {
   if (s.IsEmpty() || !IsItSwitchChar(s[0]))
@@ -173,7 +182,105 @@ bool CParser::ParseString(const UString &s, const CSwitchForm *switchForms)
   }
   return true;
 }
+//@@@@@ END REMOVE BLOCK
 
+// if (s) contains switch then function updates switch structures
+// out: true, if (s) is a switch
+bool CParser::ParseString(const UString &s, const CSwitchForm *switchForms, unsigned numSwitches)
+{
+  if (s.IsEmpty() || !IsItSwitchChar(s[0]))
+    return false;
+
+  unsigned pos = 1;
+  unsigned switchIndex = 0;
+  int maxLen = -1;
+  
+  for (unsigned i = 0; i < numSwitches; i++)
+  {
+    const char * const key = switchForms[i].Key;
+    unsigned switchLen = MyStringLen(key);
+    if ((int)switchLen <= maxLen || pos + switchLen > s.Len())
+      continue;
+    if (IsString1PrefixedByString2_NoCase_Ascii((const wchar_t *)s + pos, key))
+    {
+      switchIndex = i;
+      maxLen = switchLen;
+    }
+  }
+
+  if (maxLen < 0)
+  {
+    ErrorMessage = "Unknown switch:";
+    return false;
+  }
+
+  pos += maxLen;
+  
+  CSwitchResult &sw = _switches[switchIndex];
+  const CSwitchForm &form = switchForms[switchIndex];
+  
+  if (!form.Multi && sw.ThereIs)
+  {
+    ErrorMessage = "Multiple instances for switch:";
+    return false;
+  }
+
+  sw.ThereIs = true;
+
+  int rem = s.Len() - pos;
+  if (rem < form.MinLen)
+  {
+    ErrorMessage = "Too short switch:";
+    return false;
+  }
+  
+  sw.WithMinus = false;
+  sw.PostCharIndex = -1;
+  
+  switch (form.Type)
+  {
+    case NSwitchType::kMinus:
+      if (rem == 1)
+      {
+        sw.WithMinus = (s[pos] == '-');
+        if (sw.WithMinus)
+          return true;
+        ErrorMessage = "Incorrect switch postfix:";
+        return false;
+      }
+      break;
+      
+    case NSwitchType::kChar:
+      if (rem == 1)
+      {
+        wchar_t c = s[pos];
+        if (c <= 0x7F)
+        {
+          sw.PostCharIndex = FindCharPosInString(form.PostCharSet, (char)c);
+          if (sw.PostCharIndex >= 0)
+            return true;
+        }
+        ErrorMessage = "Incorrect switch postfix:";
+        return false;
+      }
+      break;
+      
+    case NSwitchType::kString:
+    {
+      sw.PostStrings.Add(s.Ptr(pos));
+      return true;
+    }
+  }
+
+  if (pos != s.Len())
+  {
+    ErrorMessage = "Too long switch:";
+    return false;
+  }
+  return true;
+}
+
+//@@@@@ BEGIN REMOVE BLOCK
 bool CParser::ParseStrings(const CSwitchForm *switchForms, const UStringVector &commandStrings)
 {
   ErrorLine.Empty();
@@ -191,6 +298,40 @@ bool CParser::ParseStrings(const CSwitchForm *switchForms, const UStringVector &
       if (!s.IsEmpty() && IsItSwitchChar(s[0]))
       {
         if (ParseString(s, switchForms))
+          continue;
+        ErrorLine = s;
+        return false;
+      }
+    }
+    NonSwitchStrings.Add(s);
+  }
+  return true;
+}
+//@@@@@ END REMOVE BLOCK
+
+bool CParser::ParseStrings(const CSwitchForm *switchForms, unsigned numSwitches, const UStringVector &commandStrings)
+{
+  StopSwitchIndex = -1;
+  ErrorMessage.Empty();
+  ErrorLine.Empty();
+  NonSwitchStrings.Clear();
+  delete []_switches;
+  _switches = NULL;
+  _switches = new CSwitchResult[numSwitches];
+  
+  FOR_VECTOR (i, commandStrings)
+  {
+    const UString &s = commandStrings[i];
+    if (StopSwitchIndex < 0)
+    {
+      if (s.IsEqualTo(kStopSwitchParsing))
+      {
+        StopSwitchIndex = NonSwitchStrings.Size();
+        continue;
+      }
+      if (!s.IsEmpty() && IsItSwitchChar(s[0]))
+      {
+        if (ParseString(s, switchForms, numSwitches))
           continue;
         ErrorLine = s;
         return false;
