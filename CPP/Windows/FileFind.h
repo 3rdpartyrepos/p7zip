@@ -101,6 +101,7 @@ class CEnumerator
 
   bool NextAny(CFileInfo &fileInfo);
 public:
+  CEnumerator() = default; //@@@@@ JUST REMOVE AFTER HAVING REMOVED NEXT LINE (IMPLICIT UNDECLARED DEFAULT CONSTRUCTOR)
   CEnumerator(const FString &wildcard): _wildcard(wildcard) {} //@@@@@ TODO TO BE REMOVED ONCE USAGES IN DEPENDENT FILES ARE REMOVED
   void SetDirPrefix(const FString &dirPrefix);
   bool Next(CFileInfo &fileInfo);

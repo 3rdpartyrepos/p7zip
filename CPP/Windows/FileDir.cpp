@@ -497,7 +497,7 @@ bool CreateComplexDir(CFSTR _aPathName)
   TRACEN((printf("CreateComplexDir(%s)\n",(const char *)name)))
 
 
-  FString pathName = _aPathName;
+  FString pathName (_aPathName); //@@@@@ variables are renamed w.r.t. 7-Zip
   int pos = pathName.ReverseFind(FCHAR_PATH_SEPARATOR);
   if (pos > 0 && pos == pathName.Len() - 1)
   {
@@ -505,7 +505,7 @@ bool CreateComplexDir(CFSTR _aPathName)
       return true; // Disk folder;
     pathName.Delete(pos);
   }
-  FString pathName2 = pathName;
+  const FString pathName2 (pathName); //@@@@@ variables are renamed w.r.t. 7-Zip
   pos = pathName.Len();
   TRACEN((printf("CreateComplexDir(%s) pathName2=%ls\n",(const char *)name,(CFSTR)pathName2)))
   for (;;)
@@ -578,11 +578,11 @@ bool RemoveDirWithSubItems(const FString &path)
 
   if (needRemoveSubItems)
   {
-    FString s = path;
+    FString s (path);
     s += FCHAR_PATH_SEPARATOR;
-    unsigned prefixSize = s.Len();
-    s += FCHAR_ANY_MASK;
-    NFind::CEnumerator enumerator(s);
+    const unsigned prefixSize = s.Len();
+    NFind::CEnumerator enumerator;
+    enumerator.SetDirPrefix(s);
     NFind::CFileInfo fi;
     while (enumerator.Next(fi))
     {
@@ -711,18 +711,18 @@ static bool CreateTempFile(CFSTR prefix, bool addRandom, FString &path, NIO::COu
     path = prefix;
     if (addRandom)
     {
-      FChar s[16];
-      UInt32 value = d;
+      char s[16];
+      UInt32 val = d;
       unsigned k;
       for (k = 0; k < 8; k++)
       {
-        unsigned t = value & 0xF;
-        value >>= 4;
+        unsigned t = val & 0xF;
+        val >>= 4;
         s[k] = (char)((t < 10) ? ('0' + t) : ('A' + (t - 10)));
       }
       s[k] = '\0';
       if (outFile)
-        path += FChar('.');
+        path += '.';
       path += s;
       UInt32 step = GetTickCount() + 2;
       if (step == 0)
@@ -731,7 +731,7 @@ static bool CreateTempFile(CFSTR prefix, bool addRandom, FString &path, NIO::COu
     }
     addRandom = true;
     if (outFile)
-      path += FTEXT(".tmp");
+      path += ".tmp";
     if (NFind::DoesFileOrDirExist(path))
     {
       SetLastError(ERROR_ALREADY_EXISTS);
