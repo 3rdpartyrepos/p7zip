@@ -144,7 +144,9 @@ private:
   // bool _scanAltStreams;
   bool _flatMode;
 
-  // FIXME NWindows::NFile::NFind::CFindChangeNotification _findChangeNotification;
+  #ifdef _WIN32
+  NWindows::NFile::NFind::CFindChangeNotification _findChangeNotification;
+  #endif
 
   HRESULT GetItemsFullSize(const UInt32 *indices, UInt32 numItems, CFsFolderStat &stat);
 
@@ -163,7 +165,7 @@ private:
 public:
   HRESULT Init(const FString &path /* , IFolderFolder *parentFolder */);
   #if !defined(_WIN32) || defined(UNDER_CE)
-  HRESULT InitToRoot() { return Init(FSTRING_PATH_SEPARATOR /* , NULL */); }
+  HRESULT InitToRoot() { return Init((FString) FSTRING_PATH_SEPARATOR /* , NULL */); }
   #endif
 
   CFSFolder() : _flatMode(false)
