@@ -83,6 +83,7 @@ void ConvertWinAttribToString(char *s, UInt32 wa) throw()
   }
 }
 
+//@@@@@ BEGIN REMOVE BLOCK
 void ConvertPropertyToShortString(char *dest, const PROPVARIANT &prop, PROPID propID, bool full) throw()
 {
   *dest = 0;
@@ -168,6 +169,93 @@ void ConvertPropertyToString(UString &dest, const PROPVARIANT &prop, PROPID prop
   char temp[64];
   ConvertPropertyToShortString(temp, prop, propID, full);
   dest.SetFromAscii(temp);
+}
+//@@@@@ END REMOVE BLOCK
+
+void ConvertPropertyToShortString2(char *dest, const PROPVARIANT &prop, PROPID propID, int level) throw()
+{
+  *dest = 0;
+  
+  if (prop.vt == VT_FILETIME)
+  {
+    const FILETIME &ft = prop.filetime;
+    if ((ft.dwHighDateTime == 0 &&
+         ft.dwLowDateTime == 0))
+      return;
+    ConvertUtcFileTimeToString(prop.filetime, dest, level);
+    return;
+  }
+
+  switch (propID)
+  {
+    case kpidCRC:
+    {
+      if (prop.vt != VT_UI4)
+        break;
+      ConvertUInt32ToHex8Digits(prop.ulVal, dest);
+      return;
+    }
+    case kpidAttrib:
+    {
+      if (prop.vt != VT_UI4)
+        break;
+      UInt32 a = prop.ulVal;
+
+      /*
+      if ((a & 0x8000) && (a & 0x7FFF) == 0)
+        ConvertPosixAttribToString(dest, a >> 16);
+      else
+      */
+      ConvertWinAttribToString(dest, a);
+      return;
+    }
+    case kpidPosixAttrib:
+    {
+      if (prop.vt != VT_UI4)
+        break;
+      ConvertPosixAttribToString(dest, prop.ulVal);
+      return;
+    }
+    case kpidINode:
+    {
+      if (prop.vt != VT_UI8)
+        break;
+      ConvertUInt32ToString((UInt32)(prop.uhVal.QuadPart >> 48), dest);
+      dest += strlen(dest);
+      *dest++ = '-';
+      UInt64 low = prop.uhVal.QuadPart & (((UInt64)1 << 48) - 1);
+      ConvertUInt64ToString(low, dest);
+      return;
+    }
+    case kpidVa:
+    {
+      UInt64 v = 0;
+      if (prop.vt == VT_UI4)
+        v = prop.ulVal;
+      else if (prop.vt == VT_UI8)
+        v = (UInt64)prop.uhVal.QuadPart;
+      else
+        break;
+      dest[0] = '0';
+      dest[1] = 'x';
+      ConvertUInt64ToHex(v, dest + 2);
+      return;
+    }
+  }
+  
+  ConvertPropVariantToShortString(prop, dest);
+}
+
+void ConvertPropertyToString2(UString &dest, const PROPVARIANT &prop, PROPID propID, int level)
+{
+  if (prop.vt == VT_BSTR)
+  {
+    dest.SetFromBstr(prop.bstrVal);
+    return;
+  }
+  char temp[64];
+  ConvertPropertyToShortString2(temp, prop, propID, level);
+  dest = temp;
 }
 
 static inline unsigned GetHex(unsigned v)
@@ -349,13 +437,9 @@ static void ParseSid(AString &s, const Byte *p, UInt32 lim, UInt32 &sidSize)
     }
   }
   
-  char sz[16];
   s += "S-1-";
   if (p[2] == 0 && p[3] == 0)
-  {
-    ConvertUInt32ToString(authority, sz);
-    s += sz;
-  }
+    s.Add_UInt32(authority);
   else
   {
     s += "0x";
@@ -365,8 +449,7 @@ static void ParseSid(AString &s, const Byte *p, UInt32 lim, UInt32 &sidSize)
   for (UInt32 i = 0; i < num; i++)
   {
     s += '-';
-    ConvertUInt32ToString(Get32(p + 8 + i * 4), sz);
-    s += sz;
+    s.Add_UInt32(Get32(p + 8 + i * 4));
   }
 }
 
@@ -534,11 +617,11 @@ bool ConvertNtReparseToString(const Byte *data, UInt32 size, UString &s)
   if (attr.Parse(data, size))
   {
     if (!attr.IsSymLink())
-      s.AddAscii("Junction: ");
+      s += "Junction: ";
     s += attr.GetPath();
     if (!attr.IsOkNamePair())
     {
-      s.AddAscii(" : ");
+      s += " : ";
       s += attr.PrintName;
     }
     return true;
@@ -555,7 +638,7 @@ bool ConvertNtReparseToString(const Byte *data, UInt32 size, UString &s)
 
   char hex[16];
   ConvertUInt32ToHex8Digits(tag, hex);
-  s.AddAscii(hex);
+  s += hex;
   s.Add_Space();
 
   data += 8;
@@ -563,8 +646,8 @@ bool ConvertNtReparseToString(const Byte *data, UInt32 size, UString &s)
   for (UInt32 i = 0; i < len; i++)
   {
     unsigned b = ((const Byte *)data)[i];
-    s += (wchar_t)GetHex((b >> 4) & 0xF);
-    s += (wchar_t)GetHex(b & 0xF);
+    s += (char)GetHex((b >> 4) & 0xF);
+    s += (char)GetHex(b & 0xF);
   }
   return true;
 }
