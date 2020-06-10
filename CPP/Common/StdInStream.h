@@ -20,11 +20,22 @@ public:
   bool Open(LPCTSTR fileName) throw();
   bool Close() throw();
 
+//@@@@@ BEGIN REMOVE BLOCK
   AString ScanStringUntilNewLine(bool allowEOF = false);
   void ReadToString(AString &resultString);
   UString ScanUStringUntilNewLine();
+//@@@@@ END REMOVE BLOCK
 
-  bool Eof() throw();
+  // returns:
+  //   false, if ZERO character in stream
+  //   true, if EOF or '\n'
+  bool ScanAStringUntilNewLine(AString &s);
+  bool ScanUStringUntilNewLine(UString &s);
+  // bool ReadToString(AString &resultString);
+
+  bool Eof() const throw() { return (feof(_stream) != 0); }
+  bool Error() const throw() { return (ferror(_stream) != 0); }
+
   int GetChar();
 };
 

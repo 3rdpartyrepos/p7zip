@@ -8,13 +8,19 @@
 #include "StringConvert.h"
 #include "UTFConvert.h"
 
+//@@@@@ BEGIN REMOVE BLOCK
 static const char kNewLineChar = '\n';
 
 static const char *kEOFMessage = "Unexpected end of input stream";
 static const char *kReadErrorMessage  ="Error reading input stream";
 static const char *kIllegalCharMessage = "Illegal character in input stream";
+//@@@@@ END REMOVE BLOCK
 
-// static LPCTSTR kFileOpenMode = TEXT("r");
+// #define kEOFMessage "Unexpected end of input stream"
+// #define kReadErrorMessage "Error reading input stream"
+// #define kIllegalCharMessage "Illegal zero character in input stream"
+
+#define kFileOpenMode TEXT("r") //@@@@@ usage in p7zip was commented
 
 // extern int g_CodePage;
 
@@ -48,6 +54,7 @@ bool CStdInStream::Close() throw()
   return !_streamIsOpen;
 }
 
+//@@@@@ BEGIN REMOVE BLOCK
 AString CStdInStream::ScanStringUntilNewLine(bool allowEOF)
 {
   AString s;
@@ -104,16 +111,56 @@ void CStdInStream::ReadToString(AString &resultString)
   while ((c = GetChar()) != EOF)
     resultString += (char)c;
 }
+//@@@@@ END REMOVE BLOCK
 
-bool CStdInStream::Eof() throw()
+bool CStdInStream::ScanAStringUntilNewLine(AString &s)
 {
-  return (feof(_stream) != 0);
+  s.Empty();
+  for (;;)
+  {
+    int intChar = GetChar();
+    if (intChar == EOF)
+      return true;
+    char c = (char)intChar;
+    if (c == 0)
+      return false;
+    if (c == '\n')
+      return true;
+    s += c;
+  }
 }
+
+#ifdef _WIN32
+bool CStdInStream::ScanUStringUntilNewLine(UString &dest)
+{
+  dest.Empty();
+  AString s;
+  bool res = ScanAStringUntilNewLine(s);
+  int codePage = g_CodePage;
+  if (codePage == -1)
+    codePage = CP_OEMCP;
+  if (codePage == CP_UTF8)
+    ConvertUTF8ToUnicode(s, dest);
+  else
+    MultiByteToUnicodeString2(dest, s, (UINT)codePage);
+  return res;
+}
+#else
+
+#ifndef ENV_HAVE_GETPASS
+bool CStdInStream::ScanUStringUntilNewLine(UString &dest)
+{
+  AString s;
+  bool res = ScanAStringUntilNewLine(s);
+  if(!res) return res;
+  dest = MultiByteToUnicodeString(s, (UINT)-1);
+  return res;
+}
+#endif
+
+#endif
 
 int CStdInStream::GetChar()
 {
-  int c = fgetc(_stream); // getc() doesn't work in BeOS?
-  if (c == EOF && !Eof())
-    throw kReadErrorMessage;
-  return c;
+  return fgetc(_stream); // getc() doesn't work in BeOS?
 }
